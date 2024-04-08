@@ -1,0 +1,10 @@
+FROM jketterl/openwebrx:stable
+
+# 清空 /opt/openwebrx 目录
+RUN rm -rf /opt/openwebrx/*
+
+# 将 /opt/openwebrx 项目目录持久化到主机的项目目录
+VOLUME /opt/openwebrx
+
+# 构建后使用在项目目录下运行
+# docker run --device /dev/bus/usb -p 8073:8073 -v openwebrx-settings:/var/lib/openwebrx -v ./:/opt/openwebrx allzhang/openwebrx:dev
