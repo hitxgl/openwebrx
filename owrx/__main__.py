@@ -44,6 +44,7 @@ def handleSignal(sig, frame):
 
 
 def main():
+    #解析命令行参数
     parser = argparse.ArgumentParser(description="OpenWebRX - Open Source SDR Web App for Everyone!")
     parser.add_argument(
         "-c",
@@ -56,6 +57,7 @@ def main():
     parser.add_argument("-v", "--version", action="store_true", help="Show the software version")
     parser.add_argument("--debug", action="store_true", help="Set loglevel to DEBUG")
 
+    #子命令解析器
     moduleparser = parser.add_subparsers(title="Modules", dest="module")
     adminparser = moduleparser.add_parser("admin", help="Administration actions")
     add_admin_parser(adminparser)
@@ -103,6 +105,7 @@ Support and info:       https://groups.io/g/openwebrx
 
     logger.info("OpenWebRX version {0} starting up...".format(openwebrx_version))
 
+    #设置信号处理函数，以处理 SIGINT 和 SIGTERM 信号
     for sig in [signal.SIGINT, signal.SIGTERM]:
         signal.signal(sig, handleSignal)
 
@@ -132,9 +135,11 @@ Support and info:       https://groups.io/g/openwebrx
     # start up "always-on" sources right away
     SdrService.getAllSources()
 
+    #启动服务
     Services.start()
 
     try:
+        #创建一个多线程的 HTTP 服务器，监听配置的端口和绑定地址，以处理 HTTP 请求
         server = ThreadedHttpServer(
             coreConfig.get_web_port(), RequestHandler, coreConfig.get_web_ipv6(), coreConfig.get_web_bind_address()
         )
@@ -143,6 +148,7 @@ Support and info:       https://groups.io/g/openwebrx
     except SignalException:
         pass
 
+    #停止所有 WebSocket 连接、服务、所有 SDR 源、所有报告引擎以及所有解码器队列
     WebSocketConnection.closeAll()
     Services.stop()
     SdrService.stopAllSources()

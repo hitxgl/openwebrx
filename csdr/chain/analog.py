@@ -7,7 +7,6 @@ from csdr.chain.redsea import Redsea
 from typing import Optional
 from owrx.feature import FeatureDetector
 
-
 class Am(BaseDemodulatorChain):
     def __init__(self):
         agc = Agc(Format.FLOAT)
@@ -20,7 +19,6 @@ class Am(BaseDemodulatorChain):
         ]
 
         super().__init__(workers)
-
 
 class NFm(BaseDemodulatorChain):
     def __init__(self, sampleRate: int):

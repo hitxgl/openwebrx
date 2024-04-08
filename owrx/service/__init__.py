@@ -332,10 +332,13 @@ class ServiceHandler(SdrSourceEventClient):
 
 
 class Services(object):
+    # 类级别的变量，用于存储已经启动的服务处理器和调度器的字典
     handlers = {}
     schedulers = {}
 
     @staticmethod
+    #通过监听配置信息中的服务启用状态的变化来触发 _receiveEnabledEvent 方法
+    #然后，它获取当前活动的设备并监听设备状态的变化，通过 _receiveDeviceEvent 方法处理
     def start():
         config = Config.get()
         config.wireProperty("services_enabled", Services._receiveEnabledEvent)
@@ -345,6 +348,7 @@ class Services(object):
             Services.schedulers[key] = ServiceScheduler(source)
 
     @staticmethod
+    #如果服务启用，则为每个活动的设备创建一个服务处理器 (ServiceHandler)，否则关闭所有现有的服务处理器
     def _receiveEnabledEvent(state):
         if state:
             for key, source in SdrService.getActiveSources().__dict__().items():
@@ -355,6 +359,7 @@ class Services(object):
             Services.handlers = {}
 
     @staticmethod
+    #如果有设备被添加或删除，则相应地创建或关闭服务调度器 (ServiceScheduler) 和服务处理器 (ServiceHandler)
     def _receiveDeviceEvent(changes):
         for key, source in changes.items():
             if source is PropertyDeleted:
