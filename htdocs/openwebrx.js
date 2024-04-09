@@ -701,8 +701,76 @@ var currentprofile = {
 
 var COMPRESS_FFT_PAD_N = 10; //should be the same as in csdr.c
 
+function initmockEvt() {
+    // 假设每个FFT样本是由两个浮点数（实部和虚部）组成的，都是32位浮点数  
+    const fftSampleSize = 2; // 每个FFT样本包含两个Float32值  
+    const fftLength = 1024; // 假设FFT的长度是1024个复数样本  
+    
+    // 创建一个足够大的ArrayBuffer来存储FFT数据和可能的元数据  
+    // 添加额外的4个字节用于存储FFT数据类型的标记  
+    const totalBufferSize = 1 + 4 + (fftSampleSize * fftLength * Float32Array.BYTES_PER_ELEMENT);  
+    const fftDataBuffer = new ArrayBuffer(totalBufferSize);  
+    console.log("totalBufferSize:", totalBufferSize);
+
+    // 设置FFT数据类型的标记  
+    const typeView = new Uint8Array(fftDataBuffer, 0, 4);  
+    typeView[0] = 1; // 假设1代表FFT数据  
+    
+    // 创建一个Float32Array视图来操作FFT数据部分，跳过前面的4个字节  
+    const fftDataView = new Float32Array(fftDataBuffer, 4, fftLength * fftSampleSize);  
+    
+    // 用模拟数据填充FFT数组  
+    for (let i = 0; i < fftDataView.length; i += 2) {  
+        // 假设实部和虚部都是随机数  
+        fftDataView[i] = Math.random(); // 实部  
+        fftDataView[i + 1] = Math.random(); // 虚部  
+    }  
+    
+    // 创建一个模拟的WebSocket事件对象  
+    const mockEvt = {  
+        data: fftDataBuffer  
+    };  
+      
+    // 调用on_ws_recv函数并传入模拟的事件对象  
+    on_ws_recv(mockEvt);
+}
+
 function on_ws_recv(evt) {
+    console.log("on_ws_recv 函数被调用了");  
     if (typeof evt.data === 'string') {
+        console.log("typeof string 函数被调用了"); 
+    } else if (evt.data instanceof ArrayBuffer) {
+        console.log("typeof ArrayBuffer 函数被调用了"); 
+        // binary messages
+        networkSpeedMeasurement.add(evt.data.byteLength);
+
+        var type = new Uint8Array(evt.data, 0, 1)[0];
+        var data = evt.data.slice(1);
+        
+        console.log("Data length in bytes:", data.byteLength); // 打印字节长度  
+        var float32DataLength = data.byteLength / Float32Array.BYTES_PER_ELEMENT;  
+        console.log("Data length in Float32 elements:", float32DataLength); // 打印Float32元素的数量 
+
+        switch (type) {
+            case 1:
+                console.log("typeof ArrayBuffer FFT data 函数被调用了"); 
+                // FFT data
+                if (fft_compression === "none") {
+                    console.log("waterfall_add 函数被调用了"); 
+                    waterfall_add(new Float32Array(data));
+                }
+                break;
+            default:
+                console.warn('unknown type of binary message: ' + type)
+        }
+    }
+}
+
+
+function on_ws_recv1(evt) {
+    console.log("on_ws_recv 函数被调用了");  
+    if (typeof evt.data === 'string') {
+        console.log("typeof string 函数被调用了"); 
         // text messages
         networkSpeedMeasurement.add(evt.data.length);
 
@@ -855,9 +923,9 @@ function on_ws_recv(evt) {
                         break;
                     case "sdr_error":
                         divlog(json['value'], true);
-                        var $overlay = $('#openwebrx-error-overlay');
-                        $overlay.find('.errormessage').text(json['value']);
-                        $overlay.show();
+                        // var $overlay = $('#openwebrx-error-overlay');
+                        // $overlay.find('.errormessage').text(json['value']);
+                        // $overlay.show();
                         $("#openwebrx-panel-receiver").demodulatorPanel().stopDemodulator();
                         break;
                     case "demodulator_error":
@@ -900,6 +968,7 @@ function on_ws_recv(evt) {
             }
         }
     } else if (evt.data instanceof ArrayBuffer) {
+        console.log("typeof ArrayBuffer 函数被调用了"); 
         // binary messages
         networkSpeedMeasurement.add(evt.data.byteLength);
 
@@ -912,6 +981,7 @@ function on_ws_recv(evt) {
 
         switch (type) {
             case 1:
+                console.log("typeof ArrayBuffer FFT data 函数被调用了"); 
                 // FFT data
                 if (fft_compression === "none") {
                     waterfall_add(new Float32Array(data));
@@ -1071,7 +1141,7 @@ function open_websocket() {
         divlog("Your browser does not support WebSocket, which is required for WebRX to run. Please upgrade to a HTML5 compatible browser.");
     ws = new WebSocket(ws_url);
     ws.onopen = on_ws_opened;
-    ws.onmessage = on_ws_recv;
+    // ws.onmessage = on_ws_recv;
     ws.onclose = on_ws_closed;
     ws.binaryType = "arraybuffer";
     window.onbeforeunload = function () { //http://stackoverflow.com/questions/4812686/closing-websocket-correctly-html5-javascript
@@ -1080,17 +1150,38 @@ function open_websocket() {
         ws.close();
     };
     ws.onerror = on_ws_error;
+    setTimeout(function() {  
+        console.log("initmockEvt 函数被调用了");  
+        initmockEvt();
+    }, 3000); // 3000毫秒等于3秒
+    
 }
 
 function waterfall_mkcolor(db_value, waterfall_colors_arg) {
     waterfall_colors_arg = waterfall_colors_arg || waterfall_colors;
+    db_value = Math.random();
+    console.log("waterfall_mkcolor db_value:", db_value);
+    console.log("waterfall_mkcolor waterfall_max_level:", waterfall_max_level);
+    console.log("waterfall_mkcolor waterfall_min_level:", waterfall_min_level);
+
     var value_percent = (db_value - waterfall_min_level) / (waterfall_max_level - waterfall_min_level);
     value_percent = Math.max(0, Math.min(1, value_percent));
+    console.log("waterfall_mkcolor value_percent:", value_percent);
 
     var scaled = value_percent * (waterfall_colors_arg.length - 1);
+    console.log("waterfall_mkcolor scaled:", scaled);
     var index = Math.floor(scaled);
     var remain = scaled - index;
+    if (typeof waterfall_colors === 'undefined') {
+        // waterfall_colors 是 undefined
+        console.log('waterfall_colors 是 undefined');
+    } else {
+        // waterfall_colors 不是 undefined
+        console.log('waterfall_colors 不是 undefined');
+    }
+    
     if (remain === 0) return waterfall_colors_arg[index];
+    console.log("waterfall_mkcolor index:", index);
     return color_between(waterfall_colors_arg[index], waterfall_colors_arg[index + 1], remain);}
 
 function color_between(first, second, percent) {
@@ -1156,6 +1247,22 @@ function resize_canvases() {
 }
 
 function waterfall_init() {
+    var defaultConfigJSON = `{
+        "waterfall_scheme": "GoogleTurboWaterfall",
+        "waterfall_levels": {"min": -88, "max": -20},
+        "waterfall_auto_levels": {"min": 3, "max": 10},
+        "waterfall_auto_level_default_mode": false,
+        "waterfall_auto_min_range": 50
+    }`;
+
+    var defaultConfig = JSON.parse(defaultConfigJSON);
+    
+    waterfall_min_level_default = defaultConfig.waterfall_levels.min;
+    waterfall_max_level_default = defaultConfig.waterfall_levels.max;
+    waterfall_measure_minmax_continuous = defaultConfig.waterfall_auto_level_default_mode;
+    waterfall_auto_min_range = defaultConfig.waterfall_auto_min_range;
+    waterfall_auto_levels =  defaultConfig.waterfall_auto_levels;
+
     init_canvas_container();
     resize_canvases();
     scale_setup();
@@ -1163,25 +1270,37 @@ function waterfall_init() {
 }
 
 function waterfall_add(data) {
-    if (!waterfall_setup_done) return;
+    waterfall_init();
+    waterfallColorsDefault();
+
+    // if (!waterfall_setup_done) return;
+    fft_size = 4096
     var w = fft_size;
+    console.log("waterfall_add 函数被调用了"); 
 
     if (waterfall_measure_minmax_now) {
         var levels = waterfall_measure_minmax_do(data);
         waterfall_measure_minmax_now = false;
         waterfallColorsAuto(levels);
         waterfallColorsContinuousReset();
+        console.log("waterfall_measure_minmax_now 函数被调用了"); 
     }
 
     if (waterfall_measure_minmax_continuous) {
         var level = waterfall_measure_minmax_do(data);
         waterfallColorsContinuous(level);
+        console.log("waterfall_measure_minmax_continuous 函数被调用了"); 
     }
 
     // create new canvas if the current one is full (or there isn't one)
-    if (canvas_actual_line <= 0) add_canvas();
+    if (canvas_actual_line <= 0)
+    {
+        console.log("canvas_actual_line 函数被调用了"); 
+        add_canvas();
+    } 
 
     //Add line to waterfall image
+    console.log("w:", w); // 打印字节长度  
     var oneline_image = canvas_context.createImageData(w, 1);
     for (var x = 0; x < w; x++) {
         var color = waterfall_mkcolor(data[x]);
@@ -1192,6 +1311,7 @@ function waterfall_add(data) {
     //Draw image
     canvas_context.putImageData(oneline_image, 0, --canvas_actual_line);
     shift_canvases();
+    console.log("Draw image 函数被调用了"); 
 }
 
 function waterfall_clear() {
@@ -1235,6 +1355,7 @@ var bookmarks;
 var audioEngine;
 
 function openwebrx_init() {
+    console.log("openwebrx_init 函数被调用了");  
     audioEngine = new AudioEngine(audio_buffer_maximal_length_sec, audioReporter);
     var $overlay = $('#openwebrx-autoplay-overlay');
     $overlay.on('click', function(){

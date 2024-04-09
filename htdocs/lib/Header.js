@@ -29,7 +29,7 @@ Header.prototype.init_rx_photo = function() {
         }
     });
 
-    $('.webrx-top-container').find('.openwebrx-photo-trigger').click(this.toggle_rx_photo.bind(this));
+    // $('.webrx-top-container').find('.openwebrx-photo-trigger').click(this.toggle_rx_photo.bind(this));
 };
 
 Header.prototype.close_rx_photo = function() {
